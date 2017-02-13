@@ -1,0 +1,56 @@
+version: "2"
+
+networks:
+  tt:
+    driver: bridge
+    driver_opts:
+      com.docker.network.enable_ipv6: "false"
+    ipam:
+      driver: default
+      config:
+      - subnet: 172.16.237.0/24 # here set some range of IP addresses for all services
+        gateway: 172.16.237.1   # gateway should be in same range. Use *.1 for it
+
+services:
+
+  nginx:
+    image: nginx:stable
+    ports:
+      - 80:80
+    depends_on:
+      - php
+    volumes:
+      - /home/dcapricorn/KpiDev/kpi:/data
+      - ./nginx/kpi.conf:/etc/nginx/conf.d/default.conf
+    networks:
+      tt:  # specify network name
+        ipv4_address: 172.16.237.10
+
+  php:
+    image: php7.0-fpm
+    build: ./images/php7.1-fpm
+    volumes:
+      - /home/dcapricorn/KpiDev/kpi:/data
+      - ~/.ssh/id_rsa.pub:/root/.ssh/authorized_keys
+    environment:
+      # default to allow xdebug for web (replace remote_host value with 'docker-0' IP)
+      #XDEBUG_CONFIG: "remote_host=172.17.0.1"
+      # uncomment to always start xdebug (will allow debugging for CLI)
+      XDEBUG_CONFIG: "remote_host=172.17.0.1 remote_autostart=On"
+      # uncomment next line to allow CLI debugging in PhpStorm
+      PHP_IDE_CONFIG: "serverName=kpi"
+    networks:
+      tt:              # specify network name
+        ipv4_address: 172.16.237.11 # specify exact IP address if required from specified range
+  redis:
+    image: redis
+    networks:
+      tt:  # specify network name
+        ipv4_address: 172.16.237.12
+  mysql:
+    image: mysql
+    environment:
+       MYSQL_ALLOW_EMPTY_PASSWORD: 'true'
+    networks:
+      tt:  # specify network name
+        ipv4_address: 172.16.237.13
